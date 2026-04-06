@@ -381,35 +381,11 @@ async function callAPI(userText, files) {
       headers:{'Content-Type':'application/json'},
       body:JSON.stringify({messages:apiMessages})
     });
-
-    if (!res.ok) {
-      const err=await res.json();
-      throw new Error(err.error?.message||`Erreur ${res.status}`);
-    }
-
-    const reader=res.body.getReader();
-    const decoder=new TextDecoder();
-    let buf='', started=false;
-    while(true){
-      const {done,value}=await reader.read();
-      if(done) break;
-      buf+=decoder.decode(value,{stream:true});
-      const lines=buf.split('\n'); buf=lines.pop();
-      for(const line of lines){
-        if(!line.startsWith('data: ')) continue;
-        const data=line.slice(6).trim();
-        if(data==='[DONE]') continue;
-        try{
-          const evt=JSON.parse(data);
-          if(evt.type==='content_block_delta'&&evt.delta?.type==='text_delta'){
-            if(!started){cnt.innerHTML='';started=true;}
-            fullText+=evt.delta.text;
-            cnt.innerHTML=md(fullText);
-            el.scrollTop=el.scrollHeight;
-          }
-        }catch{}
-      }
-    }
+    const data = await res.json();
+    if (!res.ok || data.error) throw new Error(data.error || `Erreur ${res.status}`);
+    fullText = data.text || '';
+    cnt.innerHTML = md(fullText);
+    el.scrollTop = el.scrollHeight;
     conv.messages.push({role:'assistant',text:fullText,displayText:fullText});
     saveConvs();
   } catch(err) {

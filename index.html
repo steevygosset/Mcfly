@@ -376,17 +376,17 @@ async function callAPI(userText, files) {
 
   let fullText='';
   try {
-    const res = await fetch('/api/chat',{
-      method:'POST',
-      headers:{'Content-Type':'application/json'},
-      body:JSON.stringify({messages:apiMessages})
+    const res = await fetch('/api/chat', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ messages: apiMessages, system: SYSTEM_PROMPT })
     });
     const data = await res.json();
-    if (!res.ok || data.error) throw new Error(data.error || `Erreur ${res.status}`);
+    if (!res.ok || data.error) throw new Error(data.error || 'Erreur ' + res.status);
     fullText = data.text || '';
     cnt.innerHTML = md(fullText);
     el.scrollTop = el.scrollHeight;
-    conv.messages.push({role:'assistant',text:fullText,displayText:fullText});
+    conv.messages.push({ role: 'assistant', text: fullText, displayText: fullText });
     saveConvs();
   } catch(err) {
     cnt.innerHTML=`<div class="err">⚠️ ${escHtml(err.message)}</div>`;

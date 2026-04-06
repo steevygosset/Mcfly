@@ -1,47 +1,41 @@
-const https = require('https');
+export const config = { runtime: 'edge' };
 
-module.exports = async (req, res) => {
-  res.setHeader('Access-Control-Allow-Origin', '*');
-  res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
-  if (req.method === 'OPTIONS') { res.status(200).end(); return; }
+export default async function handler(req) {
+  if (req.method === 'OPTIONS') {
+    return new Response(null, {
+      headers: {
+        'Access-Control-Allow-Origin': '*',
+        'Access-Control-Allow-Headers': 'Content-Type'
+      }
+    });
+  }
 
   const key = process.env.ANTHROPIC_API_KEY;
-  if (!key) {
-    res.status(500).json({ error: 'ANTHROPIC_API_KEY manquante dans Vercel > Settings > Environment Variables' });
-    return;
-  }
+  if (!key) return new Response(JSON.stringify({ error: 'Clé API manquante' }), { status: 500 });
 
-  try {
-    const { messages, system } = req.body;
-    const payload = JSON.stringify({ model: model: 'claude-haiku-4-5-20251001', max_tokens: 600, system, messages });
+  const { messages, system } = await req.json();
 
-    const result = await new Promise((resolve, reject) => {
-      const request = https.request({
-        hostname: 'api.anthropic.com',
-        path: '/v1/messages',
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'x-api-key': key,
-          'anthropic-version': '2023-06-01',
-          'Content-Length': Buffer.byteLength(payload)
-        }
-      }, (response) => {
-        let raw = '';
-        response.on('data', chunk => raw += chunk);
-        response.on('end', () => {
-          try { resolve(JSON.parse(raw)); }
-          catch (e) { reject(new Error('Réponse invalide: ' + raw.slice(0, 200))); }
-        });
-      });
-      request.on('error', reject);
-      request.write(payload);
-      request.end();
-    });
+  const upstream = await fetch('https://api.anthropic.com/v1/messages', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'x-api-key': key,
+      'anthropic-version': '2023-06-01'
+    },
+    body: JSON.stringify({
+      model: 'claude-sonnet-4-6',
+      max_tokens: 1200,
+      stream: true,
+      system,
+      messages
+    })
+  });
 
-    const text = result.content?.[0]?.text || '';
-    res.json({ text });
-  } catch (e) {
-    res.status(500).json({ error: e.message });
-  }
-};
+  return new Response(upstream.body, {
+    headers: {
+      'Content-Type': 'text/event-stream',
+      'Access-Control-Allow-Origin': '*',
+      'Cache-Control': 'no-cache'
+    }
+  });
+}

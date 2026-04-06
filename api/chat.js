@@ -13,7 +13,7 @@ module.exports = async (req, res) => {
 
   try {
     const { messages, system } = req.body;
-    const payload = JSON.stringify({ model: 'claude-sonnet-4-6', max_tokens: 1200, system, messages });
+    const payload = JSON.stringify({ model: model: 'claude-haiku-4-5-20251001', max_tokens: 600, system, messages });
 
     const result = await new Promise((resolve, reject) => {
       const request = https.request({
